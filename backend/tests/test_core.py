@@ -112,7 +112,6 @@ def client(tmp_path, monkeypatch):
     # 重新初始化临时库
     app_main.init_db()
     from fastapi.testclient import TestClient
-
     from tests.conftest import attach_auth
 
     with TestClient(app_main.app) as c:

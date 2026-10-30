@@ -4,12 +4,12 @@
 不碰网络：push/pull 的 GitHub 传输层在端到端阶段手工验证，
 这里专注验证「导出的 payload 能在另一个库无损合并」这一核心正确性。
 """
-import uuid as uuid_mod
 
-from fastapi.testclient import TestClient
+import uuid as uuid_mod
 
 from app import main as app_main
 from app.sync import apply_import, build_export
+from fastapi.testclient import TestClient
 from tests.conftest import AuthClient, attach_auth
 
 
@@ -19,8 +19,16 @@ def _make_content(client: AuthClient) -> None:
     conn = app_main.db()
     conn.execute(
         "INSERT INTO materials(user_id,uuid,title,course,filename,filetype,content,created_at) VALUES(?,?,?,?,?,?,?,?)",
-        (client.user_id, uuid_mod.uuid4().hex, "测试资料", "测试课", "t.txt", "txt",
-         "监督学习是机器学习的一种方法。" * 5, "2026-10-28T09:00:00"),
+        (
+            client.user_id,
+            uuid_mod.uuid4().hex,
+            "测试资料",
+            "测试课",
+            "t.txt",
+            "txt",
+            "监督学习是机器学习的一种方法。" * 5,
+            "2026-10-28T09:00:00",
+        ),
     )
     conn.commit()
     conn.close()
@@ -33,16 +41,28 @@ def _make_content(client: AuthClient) -> None:
     conn = app_main.db()
     cur = conn.execute(
         "INSERT INTO questions(user_id,uuid,kp_id,type,question,answer,source,created_at) VALUES(?,?,?,?,?,?,?,?)",
-        (client.user_id, uuid_mod.uuid4().hex, kid, "short_answer",
-         "监督学习需要什么？", "带标签的数据", "manual", "2026-10-28T09:00:00"),
+        (
+            client.user_id,
+            uuid_mod.uuid4().hex,
+            kid,
+            "short_answer",
+            "监督学习需要什么？",
+            "带标签的数据",
+            "manual",
+            "2026-10-28T09:00:00",
+        ),
     )
     qid = cur.lastrowid
     conn.commit()
     conn.close()
-    r = client.post("/api/practice/submit", json={"question_id": qid, "correct": False, "answer": "不知道"})
+    r = client.post(
+        "/api/practice/submit", json={"question_id": qid, "correct": False, "answer": "不知道"}
+    )
     assert r.status_code == 200
     # 再补一次答对
-    r = client.post("/api/practice/submit", json={"question_id": qid, "correct": True, "answer": "带标签的数据"})
+    r = client.post(
+        "/api/practice/submit", json={"question_id": qid, "correct": True, "answer": "带标签的数据"}
+    )
     assert r.status_code == 200
 
 
@@ -50,6 +70,7 @@ def test_uuid_migration_backfills_all_rows(tmp_path, monkeypatch):
     """老库（无 uuid 列）启动后所有行都有 uuid 且唯一。"""
     db_path = tmp_path / "legacy.db"
     import sqlite3
+
     con = sqlite3.connect(db_path)
     con.executescript("""
         CREATE TABLE users(id INTEGER PRIMARY KEY, username TEXT, password_hash TEXT,
@@ -116,8 +137,7 @@ def test_export_import_roundtrip(tmp_path, monkeypatch):
     # 甲的账号被原样搬过来（uuid 相同），数据行数一致
     src_user = next(u for u in payload["users"] if u["username"] == a.username)
     conn = app_main.db()
-    imported_user = conn.execute("SELECT * FROM users WHERE uuid=?",
-                                 (src_user["uuid"],)).fetchone()
+    imported_user = conn.execute("SELECT * FROM users WHERE uuid=?", (src_user["uuid"],)).fetchone()
     assert imported_user is not None, "甲的账号没合并进来"
     assert imported_user["username"] == a.username
 
@@ -133,12 +153,15 @@ def test_export_import_roundtrip(tmp_path, monkeypatch):
     assert n_wrong == 1, f"wrong_book 应为 1，实际 {n_wrong}"
     assert n_tasks == 1, f"tasks 应为 1，实际 {n_tasks}"
     # 外键重接：练习记录指向本地刚导入的题目
-    fk_ok = conn.execute("""
+    fk_ok = conn.execute(
+        """
         SELECT COUNT(*) FROM practice_records p
         JOIN questions q ON q.id = p.question_id
         JOIN users u ON u.id = p.user_id
         WHERE u.username = ?
-    """, (a.username,)).fetchone()[0]
+    """,
+        (a.username,),
+    ).fetchone()[0]
     assert fk_ok == 2, "练习记录外键没有重接到导入的题目/用户"
     conn.close()
 

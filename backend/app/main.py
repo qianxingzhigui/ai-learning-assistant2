@@ -23,8 +23,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 import httpx
-from fastapi import (Depends, FastAPI, File, Form, Header, HTTPException,
-                     UploadFile)
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -235,9 +234,12 @@ def migrate_uuid(conn: sqlite3.Connection) -> None:
 
     幂等。老行回填随机 uuid；此后所有插入路径都必须生成 uuid。
     """
-    tables = [r[0] for r in conn.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
-    )]
+    tables = [
+        r[0]
+        for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+        )
+    ]
     changed = False
     for t in ("users", *USER_TABLES):
         if t not in tables:
@@ -329,9 +331,7 @@ def register(body: dict):
         raise HTTPException(400, "密码至少 6 位")
 
     conn = db()
-    exists = conn.execute(
-        "SELECT id FROM users WHERE username=?", (username,)
-    ).fetchone()
+    exists = conn.execute("SELECT id FROM users WHERE username=?", (username,)).fetchone()
     if exists:
         conn.close()
         raise HTTPException(409, "用户名已被注册")
@@ -525,9 +525,7 @@ def list_materials(course: str = None, uid: int = Depends(require_user)):
 @app.get("/api/materials/{mid}")
 def get_material(mid: int, uid: int = Depends(require_user)):
     conn = db()
-    row = conn.execute(
-        "SELECT * FROM materials WHERE id=? AND user_id=?", (mid, uid)
-    ).fetchone()
+    row = conn.execute("SELECT * FROM materials WHERE id=? AND user_id=?", (mid, uid)).fetchone()
     conn.close()
     if not row:
         raise HTTPException(404, "资料不存在")
@@ -619,9 +617,7 @@ def update_kp(kid: int, body: dict, uid: int = Depends(require_user)):
 @app.delete("/api/knowledge-points/{kid}")
 def delete_kp(kid: int, uid: int = Depends(require_user)):
     conn = db()
-    cur = conn.execute(
-        "DELETE FROM knowledge_points WHERE id=? AND user_id=?", (kid, uid)
-    )
+    cur = conn.execute("DELETE FROM knowledge_points WHERE id=? AND user_id=?", (kid, uid))
     conn.commit()
     changed = cur.rowcount
     conn.close()
@@ -684,9 +680,7 @@ def set_task_status(tid: int, body: dict, uid: int = Depends(require_user)):
     if status not in ("todo", "doing", "done"):
         raise HTTPException(400, "status 只能是 todo/doing/done")
     conn = db()
-    cur = conn.execute(
-        "UPDATE tasks SET status=? WHERE id=? AND user_id=?", (status, tid, uid)
-    )
+    cur = conn.execute("UPDATE tasks SET status=? WHERE id=? AND user_id=?", (status, tid, uid))
     conn.commit()
     changed = cur.rowcount
     conn.close()
@@ -746,9 +740,7 @@ def generate_questions(body: dict, uid: int = Depends(require_user)):
         source = "fallback"
 
     if not questions:
-        questions = ai_helper.fallback_questions(
-            kp["title"], content or kp["title"], num
-        )
+        questions = ai_helper.fallback_questions(kp["title"], content or kp["title"], num)
         source = "fallback"
 
     conn = db()
@@ -795,9 +787,7 @@ def submit_practice(body: dict, uid: int = Depends(require_user)):
     correct = 1 if body.get("correct") else 0
     answer = body.get("answer", "")
     conn = db()
-    q = conn.execute(
-        "SELECT id FROM questions WHERE id=? AND user_id=?", (qid, uid)
-    ).fetchone()
+    q = conn.execute("SELECT id FROM questions WHERE id=? AND user_id=?", (qid, uid)).fetchone()
     if not q:
         conn.close()
         raise HTTPException(404, "题目不存在")
@@ -848,9 +838,7 @@ def update_wrong(wid: int, body: dict, uid: int = Depends(require_user)):
         conn.close()
         raise HTTPException(400, "没有可更新字段")
     params.extend([wid, uid])
-    cur = conn.execute(
-        f"UPDATE wrong_book SET {','.join(fields)} WHERE id=? AND user_id=?", params
-    )
+    cur = conn.execute(f"UPDATE wrong_book SET {','.join(fields)} WHERE id=? AND user_id=?", params)
     conn.commit()
     changed = cur.rowcount
     conn.close()
@@ -922,9 +910,7 @@ def export_wrong_csv(
     return Response(
         content=content,
         media_type="text/csv; charset=utf-8",
-        headers={
-            "Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"
-        },
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"},
     )
 
 
@@ -937,11 +923,7 @@ def print_wrong_book(
     """打印友好版错题本：浏览器里 Ctrl+P 即可「另存为 PDF」。"""
     uid = _uid_flexible(authorization, token)
     rows = _wrong_rows(uid, only_unresolved)
-    username = (
-        db()
-        .execute("SELECT username FROM users WHERE id=?", (uid,))
-        .fetchone()["username"]
-    )
+    username = db().execute("SELECT username FROM users WHERE id=?", (uid,)).fetchone()["username"]
 
     cards = []
     for i, r in enumerate(rows, 1):
@@ -996,9 +978,7 @@ def global_search(q: str, uid: int = Depends(require_user)):
             return text[:80]
         start = max(0, pos - 40)
         end = min(len(text), pos + len(q) + 60)
-        return (
-            ("…" if start else "") + text[start:end] + ("…" if end < len(text) else "")
-        )
+        return ("…" if start else "") + text[start:end] + ("…" if end < len(text) else "")
 
     materials = [
         {
@@ -1077,12 +1057,17 @@ def _gh(cfg: dict, method: str, path: str, body: dict = None, raw: bool = False)
         "User-Agent": "ai-learning-assistant-sync",
     }
     try:
-        resp = httpx.request(method, f"https://api.github.com{path}", headers=headers,
-                             json=body, timeout=30)
+        resp = httpx.request(
+            method, f"https://api.github.com{path}", headers=headers, json=body, timeout=30
+        )
     except httpx.HTTPError as e:
         raise HTTPException(502, f"GitHub 连接失败：{e}")
     if resp.status_code >= 400:
-        detail = resp.json().get("message", resp.text) if "json" in resp.headers.get("content-type", "") else resp.text
+        detail = (
+            resp.json().get("message", resp.text)
+            if "json" in resp.headers.get("content-type", "")
+            else resp.text
+        )
         raise HTTPException(resp.status_code, f"GitHub 返回 {resp.status_code}：{detail}")
     if raw:
         return resp.content
@@ -1098,9 +1083,13 @@ def sync_config(body: dict, uid: int = Depends(require_user)):
         raise HTTPException(400, "repo 需为 owner/name 格式")
     if not token:
         raise HTTPException(400, "token 不能为空")
-    SYNC_CONFIG_PATH.write_text(json.dumps(
-        {"repo": repo, "token": token, "branch": body.get("branch") or "main"},
-        ensure_ascii=False), encoding="utf-8")
+    SYNC_CONFIG_PATH.write_text(
+        json.dumps(
+            {"repo": repo, "token": token, "branch": body.get("branch") or "main"},
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
     return {"saved": True}
 
 
@@ -1133,22 +1122,31 @@ def sync_push(uid: int = Depends(require_user)):
     payload = sync_mod.build_export(conn)
     conn.close()
     import base64
+
     content = base64.b64encode(json.dumps(payload, ensure_ascii=False).encode("utf-8")).decode()
     path = f"sync/{me}.json"
     # 先查旧文件 sha（contents API 更新必须带 sha）
     old_sha = None
-    r = httpx.get(f"https://api.github.com/repos/{cfg['repo']}/contents/{path}",
-                  headers={"Authorization": f"Bearer {cfg['token']}"},
-                  timeout=30)
+    r = httpx.get(
+        f"https://api.github.com/repos/{cfg['repo']}/contents/{path}",
+        headers={"Authorization": f"Bearer {cfg['token']}"},
+        timeout=30,
+    )
     if r.status_code == 200:
         old_sha = r.json()["sha"]
-    body = {"message": f"sync: {me} @{datetime.now():%Y-%m-%d %H:%M}",
-            "content": content, "branch": cfg["branch"]}
+    body = {
+        "message": f"sync: {me} @{datetime.now():%Y-%m-%d %H:%M}",
+        "content": content,
+        "branch": cfg["branch"],
+    }
     if old_sha:
         body["sha"] = old_sha
     resp = _gh(cfg, "PUT", f"/repos/{cfg['repo']}/contents/{path}", body)
-    return {"pushed": path, "commit": resp.get("commit", {}).get("sha", "")[:10],
-            "rows": payload.get("counts", {})}
+    return {
+        "pushed": path,
+        "commit": resp.get("commit", {}).get("sha", "")[:10],
+        "rows": payload.get("counts", {}),
+    }
 
 
 @app.post("/api/sync/pull")
@@ -1263,9 +1261,7 @@ def ai_test(uid: int = Depends(require_user)):
 def ai_summarize(body: dict, uid: int = Depends(require_user)):
     mid = body.get("material_id")
     conn = db()
-    row = conn.execute(
-        "SELECT * FROM materials WHERE id=? AND user_id=?", (mid, uid)
-    ).fetchone()
+    row = conn.execute("SELECT * FROM materials WHERE id=? AND user_id=?", (mid, uid)).fetchone()
     conn.close()
     if not row:
         raise HTTPException(404, "资料不存在")
@@ -1279,9 +1275,7 @@ def ai_summarize(body: dict, uid: int = Depends(require_user)):
             )
             return {"mode": "ai", "summary": text}
         except httpx.HTTPError as e:
-            return JSONResponse(
-                status_code=502, content={"detail": f"AI 接口调用失败：{e}"}
-            )
+            return JSONResponse(status_code=502, content={"detail": f"AI 接口调用失败：{e}"})
     return {"mode": "fallback", "summary": ai_helper.fallback_summary(row["content"])}
 
 
@@ -1297,16 +1291,12 @@ def ai_ask(body: dict, uid: int = Depends(require_user)):
     if not chunks:
         # 全库兜底检索（仅限本人资料）
         conn = db()
-        rows = conn.execute(
-            "SELECT content FROM materials WHERE user_id=?", (uid,)
-        ).fetchall()
+        rows = conn.execute("SELECT content FROM materials WHERE user_id=?", (uid,)).fetchall()
         conn.close()
         chunks = ai_helper.chunk_text("\n".join(r["content"] for r in rows), CHUNK_SIZE)
 
     if ai_helper.is_available():
-        context = build_context(
-            ai_helper.search_chunks(question, chunks, top_k=5) or chunks
-        )
+        context = build_context(ai_helper.search_chunks(question, chunks, top_k=5) or chunks)
         try:
             text = ai_helper.call_llm(
                 "你是学习助手。仅依据下面提供的课程资料片段回答问题；"
@@ -1316,9 +1306,7 @@ def ai_ask(body: dict, uid: int = Depends(require_user)):
             )
             return {"mode": "ai", "answer": text}
         except httpx.HTTPError as e:
-            return JSONResponse(
-                status_code=502, content={"detail": f"AI 接口调用失败：{e}"}
-            )
+            return JSONResponse(status_code=502, content={"detail": f"AI 接口调用失败：{e}"})
     return {"mode": "fallback", "answer": ai_helper.fallback_answer(question, chunks)}
 
 
@@ -1327,9 +1315,7 @@ def ai_weak_analysis(body: dict, uid: int = Depends(require_user)):
     course = body.get("course")
     overview = stats_overview(uid)
     weak_kps = [
-        k
-        for k in overview["per_kp"]
-        if k["weak"] and (not course or k["course"] == course)
+        k for k in overview["per_kp"] if k["weak"] and (not course or k["course"] == course)
     ]
     if not weak_kps:
         return {
@@ -1340,9 +1326,7 @@ def ai_weak_analysis(body: dict, uid: int = Depends(require_user)):
 
     weak_titles = "、".join(k["title"] for k in weak_kps)
     if ai_helper.is_available():
-        chunks = course_chunks(course or "未分类", uid) or course_chunks(
-            weak_kps[0]["course"], uid
-        )
+        chunks = course_chunks(course or "未分类", uid) or course_chunks(weak_kps[0]["course"], uid)
         try:
             text = ai_helper.call_llm(
                 "你是学习教练。学生以下知识点练习正确率低于 60%，请结合课程资料给出："
@@ -1351,9 +1335,7 @@ def ai_weak_analysis(body: dict, uid: int = Depends(require_user)):
             )
             return {"mode": "ai", "weak_kps": weak_kps, "advice": text}
         except httpx.HTTPError as e:
-            return JSONResponse(
-                status_code=502, content={"detail": f"AI 接口调用失败：{e}"}
-            )
+            return JSONResponse(status_code=502, content={"detail": f"AI 接口调用失败：{e}"})
 
     lines = [
         "【规则引擎分析（未配置 AI，模式：统计）】",
@@ -1411,6 +1393,4 @@ class _SPAStaticFiles(StaticFiles):
 
 _frontend = apppaths.frontend_dist()
 if _frontend is not None:
-    app.mount(
-        "/", _SPAStaticFiles(directory=str(_frontend), html=True), name="frontend"
-    )
+    app.mount("/", _SPAStaticFiles(directory=str(_frontend), html=True), name="frontend")

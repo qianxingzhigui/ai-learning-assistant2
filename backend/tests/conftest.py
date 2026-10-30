@@ -22,9 +22,8 @@ Bearer 令牌。让每个测试拿到一个互不相干的随机用户，既避�
 import uuid
 
 import pytest
-from fastapi.testclient import TestClient
-
 from app.main import app
+from fastapi.testclient import TestClient
 
 
 class AuthClient(TestClient):

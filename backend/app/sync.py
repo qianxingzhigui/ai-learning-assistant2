@@ -8,11 +8,20 @@
 - 同名用户并入现有账号（demo 在两台机器上 uuid 不同，但视为同一账号）。
 - 纯函数：conn 由调用方（main.py 路由）传入，避免循环导入。
 """
+
 import sqlite3
 import uuid
 
 # 表顺序 = 外键依赖顺序，导入必须按它来
-CHAIN = ("users", "materials", "knowledge_points", "questions", "practice_records", "wrong_book", "tasks")
+CHAIN = (
+    "users",
+    "materials",
+    "knowledge_points",
+    "questions",
+    "practice_records",
+    "wrong_book",
+    "tasks",
+)
 
 PAYLOAD_VERSION = 1
 
@@ -80,10 +89,10 @@ def apply_import(conn: sqlite3.Connection, payload: dict) -> dict:
     返回 {table: inserted}，外键通过 uuid→本地 id 的映射表重接。
     """
     stats = {t: 0 for t in CHAIN if t in payload}
-    uid_map = {}    # 远端 user uuid -> 本地 users.id
-    mat_map = {}    # 远端 material uuid -> 本地 materials.id
-    kp_map = {}     # 远端 kp uuid -> 本地 knowledge_points.id
-    q_map = {}      # 远端 question uuid -> 本地 questions.id
+    uid_map = {}  # 远端 user uuid -> 本地 users.id
+    mat_map = {}  # 远端 material uuid -> 本地 materials.id
+    kp_map = {}  # 远端 kp uuid -> 本地 knowledge_points.id
+    q_map = {}  # 远端 question uuid -> 本地 questions.id
 
     def have_uuid(table):
         return {r[0] for r in conn.execute(f"SELECT uuid FROM {table} WHERE uuid IS NOT NULL")}
@@ -103,15 +112,22 @@ def apply_import(conn: sqlite3.Connection, payload: dict) -> dict:
             return row["id"]
         src = next((u for u in payload.get("users", []) if u.get("uuid") == owner_uuid), None)
         if src:
-            same_name = conn.execute("SELECT id FROM users WHERE username=?",
-                                     (src["username"],)).fetchone()
+            same_name = conn.execute(
+                "SELECT id FROM users WHERE username=?", (src["username"],)
+            ).fetchone()
             if same_name:  # 同名：视为同一人（demo 两台机器 uuid 不同就是这种情况）
                 uid_map[owner_uuid] = same_name["id"]
                 return same_name["id"]
             cur = conn.execute(
                 "INSERT INTO users(uuid,username,password_hash,salt,display_name,created_at) VALUES(?,?,?,?,?,?)",
-                (owner_uuid, src["username"], src["password_hash"], src["salt"],
-                 src.get("display_name", ""), src.get("created_at", "")),
+                (
+                    owner_uuid,
+                    src["username"],
+                    src["password_hash"],
+                    src["salt"],
+                    src.get("display_name", ""),
+                    src.get("created_at", ""),
+                ),
             )
             uid_map[owner_uuid] = cur.lastrowid
             stats["users"] += 1
@@ -136,8 +152,14 @@ def apply_import(conn: sqlite3.Connection, payload: dict) -> dict:
             continue  # 同名并入，不建新号
         conn.execute(
             "INSERT INTO users(uuid,username,password_hash,salt,display_name,created_at) VALUES(?,?,?,?,?,?)",
-            (u_uuid, u["username"], u["password_hash"], u["salt"],
-             u.get("display_name", ""), u.get("created_at", "")),
+            (
+                u_uuid,
+                u["username"],
+                u["password_hash"],
+                u["salt"],
+                u.get("display_name", ""),
+                u.get("created_at", ""),
+            ),
         )
         stats["users"] += 1
 
@@ -147,9 +169,16 @@ def apply_import(conn: sqlite3.Connection, payload: dict) -> dict:
             continue
         conn.execute(
             "INSERT INTO materials(user_id,uuid,title,course,filename,filetype,content,created_at) VALUES(?,?,?,?,?,?,?,?)",
-            (resolve_user(r["owner"]), r["uuid"], r["title"], r["course"],
-             r.get("filename", ""), r.get("filetype", "txt"),
-             r.get("content", ""), r.get("created_at", "")),
+            (
+                resolve_user(r["owner"]),
+                r["uuid"],
+                r["title"],
+                r["course"],
+                r.get("filename", ""),
+                r.get("filetype", "txt"),
+                r.get("content", ""),
+                r.get("created_at", ""),
+            ),
         )
         stats["materials"] += 1
     for r in conn.execute("SELECT id, uuid FROM materials WHERE uuid IS NOT NULL"):
@@ -161,9 +190,15 @@ def apply_import(conn: sqlite3.Connection, payload: dict) -> dict:
             continue
         conn.execute(
             "INSERT INTO knowledge_points(user_id,uuid,material_id,course,title,description,created_at) VALUES(?,?,?,?,?,?,?)",
-            (resolve_user(r["owner"]), r["uuid"], null_fk(mat_map, r.get("material_uuid")),
-             r.get("course", "未分类"), r["title"], r.get("description", ""),
-             r.get("created_at", "")),
+            (
+                resolve_user(r["owner"]),
+                r["uuid"],
+                null_fk(mat_map, r.get("material_uuid")),
+                r.get("course", "未分类"),
+                r["title"],
+                r.get("description", ""),
+                r.get("created_at", ""),
+            ),
         )
         stats["knowledge_points"] += 1
     for r in conn.execute("SELECT id, uuid FROM knowledge_points WHERE uuid IS NOT NULL"):
@@ -175,9 +210,16 @@ def apply_import(conn: sqlite3.Connection, payload: dict) -> dict:
             continue
         conn.execute(
             "INSERT INTO questions(user_id,uuid,kp_id,type,question,answer,source,created_at) VALUES(?,?,?,?,?,?,?,?)",
-            (resolve_user(r["owner"]), r["uuid"], null_fk(kp_map, r.get("kp_uuid")),
-             r.get("type", "short_answer"), r["question"], r.get("answer", ""),
-             r.get("source", "manual"), r.get("created_at", "")),
+            (
+                resolve_user(r["owner"]),
+                r["uuid"],
+                null_fk(kp_map, r.get("kp_uuid")),
+                r.get("type", "short_answer"),
+                r["question"],
+                r.get("answer", ""),
+                r.get("source", "manual"),
+                r.get("created_at", ""),
+            ),
         )
         stats["questions"] += 1
     for r in conn.execute("SELECT id, uuid FROM questions WHERE uuid IS NOT NULL"):
@@ -192,8 +234,14 @@ def apply_import(conn: sqlite3.Connection, payload: dict) -> dict:
             continue
         conn.execute(
             "INSERT INTO practice_records(user_id,uuid,question_id,user_answer,correct,created_at) VALUES(?,?,?,?,?,?)",
-            (resolve_user(r["owner"]), r["uuid"], qid, r.get("user_answer", ""),
-             1 if r.get("correct") else 0, r.get("created_at", "")),
+            (
+                resolve_user(r["owner"]),
+                r["uuid"],
+                qid,
+                r.get("user_answer", ""),
+                1 if r.get("correct") else 0,
+                r.get("created_at", ""),
+            ),
         )
         stats["practice_records"] += 1
 
@@ -216,9 +264,15 @@ def apply_import(conn: sqlite3.Connection, payload: dict) -> dict:
         else:
             conn.execute(
                 "INSERT INTO wrong_book(user_id,uuid,question_id,wrong_count,resolved,review_marked,last_wrong_at) VALUES(?,?,?,?,?,?,?)",
-                (owner, r["uuid"], qid, int(r.get("wrong_count", 1)),
-                 1 if r.get("resolved") else 0, 1 if r.get("review_marked") else 0,
-                 r.get("last_wrong_at", "")),
+                (
+                    owner,
+                    r["uuid"],
+                    qid,
+                    int(r.get("wrong_count", 1)),
+                    1 if r.get("resolved") else 0,
+                    1 if r.get("review_marked") else 0,
+                    r.get("last_wrong_at", ""),
+                ),
             )
             stats["wrong_book"] += 1
 
@@ -228,9 +282,17 @@ def apply_import(conn: sqlite3.Connection, payload: dict) -> dict:
             continue
         conn.execute(
             "INSERT INTO tasks(user_id,uuid,course,kp_id,title,description,due_date,status,created_at) VALUES(?,?,?,?,?,?,?,?,?)",
-            (resolve_user(r["owner"]), r["uuid"], r.get("course", "未分类"),
-             null_fk(kp_map, r.get("kp_uuid")), r["title"], r.get("description", ""),
-             r.get("due_date"), r.get("status", "todo"), r.get("created_at", "")),
+            (
+                resolve_user(r["owner"]),
+                r["uuid"],
+                r.get("course", "未分类"),
+                null_fk(kp_map, r.get("kp_uuid")),
+                r["title"],
+                r.get("description", ""),
+                r.get("due_date"),
+                r.get("status", "todo"),
+                r.get("created_at", ""),
+            ),
         )
         stats["tasks"] += 1
 

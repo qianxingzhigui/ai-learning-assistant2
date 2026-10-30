@@ -1,0 +1,12 @@
+# 后端运行依赖（v2 重构时误删，2026-10-30 恢复；CI 与本地环境以此为准）
+fastapi>=0.115
+uvicorn>=0.30
+httpx>=0.27
+pypdf>=4.0
+python-multipart>=0.0.9
+python-docx>=1.1
+
+# 开发/测试依赖（CI 的 backend-test 需要）
+pytest>=8.0
+black>=24.0
+isort>=5.13
