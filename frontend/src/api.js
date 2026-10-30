@@ -110,4 +110,13 @@ export default {
   aiSummarize: (body) => request('/api/ai/summarize', { method: 'POST', body: JSON.stringify(body) }),
   aiAsk: (body) => request('/api/ai/ask', { method: 'POST', body: JSON.stringify(body) }),
   aiWeakAnalysis: (body) => request('/api/ai/weak-analysis', { method: 'POST', body: JSON.stringify(body) }),
+  // 跨机同步
+  syncConfig: (body) => request('/api/sync/config', { method: 'POST', body: JSON.stringify(body) }),
+  syncExport: () => request('/api/sync/export'),
+  syncImport: (payload) => request('/api/sync/import', { method: 'POST', body: JSON.stringify(payload) }),
+  syncPush: () => request('/api/sync/push', { method: 'POST' }),
+  syncPull: () => request('/api/sync/pull', { method: 'POST' }),
+  // 手动备份：下载/读取 JSON 文件（<a> 下载带不了请求头，走 fetch+blob）
+  downloadSyncFile: () =>
+    downloadFile('/api/sync/export', `学习数据备份-${new Date().toISOString().slice(0, 10)}.json`),
 }

@@ -14,6 +14,7 @@ import Tasks from './views/Tasks.vue'
 import Practice from './views/Practice.vue'
 import WrongBook from './views/WrongBook.vue'
 import AiAssistant from './views/AiAssistant.vue'
+import Sync from './views/Sync.vue'
 import Login from './views/Login.vue'
 import { auth } from './api'
 
@@ -28,6 +29,7 @@ const router = createRouter({
     { path: '/practice', name: 'practice', component: Practice, meta: { title: '练习' } },
     { path: '/wrong-book', name: 'wrongBook', component: WrongBook, meta: { title: '错题本' } },
     { path: '/ai', name: 'ai', component: AiAssistant, meta: { title: 'AI 助手' } },
+    { path: '/sync', name: 'sync', component: Sync, meta: { title: '数据同步' } },
   ],
 })
 

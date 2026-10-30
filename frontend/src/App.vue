@@ -10,6 +10,7 @@
         <el-menu-item index="/practice"><el-icon><EditPen /></el-icon>练习</el-menu-item>
         <el-menu-item index="/wrong-book"><el-icon><WarningFilled /></el-icon>错题本</el-menu-item>
         <el-menu-item index="/ai"><el-icon><ChatDotRound /></el-icon>AI 助手</el-menu-item>
+        <el-menu-item index="/sync"><el-icon><Refresh /></el-icon>数据同步</el-menu-item>
       </el-menu>
       <div class="user-box">
         <div class="search-hint" @click="$refs.gs.open()">🔍 搜索 <span class="kbd">Ctrl+K</span></div>
@@ -28,7 +29,7 @@
 // v1.2：侧栏底部加搜索入口、当前用户与退出
 import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Odometer, FolderOpened, Collection, List, EditPen, WarningFilled, ChatDotRound } from '@element-plus/icons-vue'
+import { Odometer, FolderOpened, Collection, List, EditPen, WarningFilled, ChatDotRound, Refresh } from '@element-plus/icons-vue'
 import { auth } from './api'
 import GlobalSearch from './components/GlobalSearch.vue'
 
